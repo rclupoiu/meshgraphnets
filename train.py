@@ -105,7 +105,7 @@ def train(dataset, device, stats_list, args):
     # train
     losses = []
     test_accs = []
-    best_acc = 0
+    best_acc = np.inf
     best_model = None
     for epoch in trange(args.epochs, desc="Training", unit="Epochs"):
         total_loss = 0
@@ -130,14 +130,26 @@ def train(dataset, device, stats_list, args):
         if epoch % 10 == 0:
           test_acc = test(test_loader, model,mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge,mean_vec_y,std_vec_y)
           test_accs.append(test_acc.item())
-          if test_acc > best_acc:
+          if test_acc < best_acc:
             best_acc = test_acc
             best_model = copy.deepcopy(model)
+
         else:
           test_accs.append(test_accs[-1])
 
         if(epoch%100==0):
             print("train loss", str(round(total_loss,2)), "test loss", str(round(test_acc.item(),2)))
+
+            if(args.save_best_model):
+                # saving model
+                if not os.path.isdir( args.checkpoint_dir ):
+                    os.mkdir(args.checkpoint_dir)
+
+                model_name='model_nl'+str(args.num_layers)+'_bs'+str(args.batch_size) + \
+                           '_hd'+str(args.batch_size)+'_ep'+str(args.epochs)+'_wd'+str(args.weight_decay) + \
+                           '_lr'+str(args.lr)+'.pt'
+                PATH = os.path.join(args.checkpoint_dir, model_name)
+                torch.save(best_model.state_dict(), PATH )
 
     return test_accs, losses, best_model, best_acc, test_loader
 
@@ -181,21 +193,21 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 for args in [
     {'model_type': 'meshgraphnet', 'dataset': 'mini10', 'num_layers': 10,
-      'batch_size': 16, 'hidden_dim': 10, 'epochs': 5000,
+      'batch_size': 16, 'hidden_dim': 10, 'epochs': 5,
       'opt': 'adam', 'opt_scheduler': 'none', 'opt_restart': 0, 'weight_decay': 5e-4, 'lr': 0.001,
-      'train_size': 45, 'shuffle': True},
+      'train_size': 1, 'shuffle': False, 'save_best_model': True, 'checkpoint_dir': './best_models/'},
 ]:
     args = objectview(args)
 
     args.model_type = 'meshgraphnet'
 
     if args.dataset == 'mini10':
-        file_path = os.path.join(dataset_dir, 'meshgraphnets_miniset5traj.pt')
-        stats_path = os.path.join(dataset_dir, 'meshgraphnets_miniset5traj_ms.pt')
-        dataset = torch.load(file_path)[:50] #, batch_size = args['batch_size'])
+        file_path = os.path.join(dataset_dir, 'meshgraphnets_minisetdifftraj.pt')
+        #stats_path = os.path.join(dataset_dir, 'meshgraphnets_miniset5traj_ms.pt')
+        dataset = torch.load(file_path)[:55] #, batch_size = args['batch_size'])
         if(args.shuffle):
             random.shuffle(dataset)
-        dataset_stats=torch.load(stats_path)
+        #dataset_stats=torch.load(stats_path)
         #import pdb; pdb.set_trace()
     else:
         raise NotImplementedError("Unknown dataset")
