@@ -18,6 +18,8 @@ from torch_sparse import SparseTensor, set_diag
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import remove_self_loops, add_self_loops, softmax, degree
 
+import stats
+
 class MeshGraphNet(torch.nn.Module):
     def __init__(self, input_dim_node, input_dim_edge, hidden_dim, output_dim, args, emb=False):
         super(MeshGraphNet, self).__init__()
@@ -70,12 +72,15 @@ class MeshGraphNet(torch.nn.Module):
         node_processor_layer = NodeProcessorLayer( hidden_dim, output_dim)
         return edge_procssor_layer, node_processor_layer
 
-    def forward(self, data):
+    def forward(self, data,mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge):
         """
         Encoder encodes graph (node/edge features) into latent vectors (node/edge embeddings)
         The return of processor is fed into the processor for generating new feature vectors
         """
         x, edge_index, edge_attr, pressure = data.x, data.edge_index, data.edge_attr, data.p
+
+        x = stats.normalize(x,mean_vec_x,std_vec_x)
+        edge_attr=stats.normalize(edge_attr,mean_vec_edge,std_vec_edge)
 
         #print("x shape", x.shape)
         #print("edge_attr shape", edge_attr.shape)
@@ -99,13 +104,15 @@ class MeshGraphNet(torch.nn.Module):
 
         return self.decoder(x)
 
-    def loss(self, pred, inputs):
+    def loss(self, pred, inputs,mean_vec_y,std_vec_y):
         # label: ground_truth dyanmic variables [1]
         normal=torch.tensor(0)
         outflow=torch.tensor(5)
         loss_mask=torch.logical_or((torch.argmax(inputs.x[:,2:],dim=1)==torch.tensor(0)),
                                    (torch.argmax(inputs.x[:,2:],dim=1)==torch.tensor(5)))
-        error=torch.sum((inputs.y-pred)**2,axis=1)
+
+        labels = stats.normalize(inputs.y,mean_vec_y,std_vec_y)
+        error=torch.sum((labels-pred)**2,axis=1)
         loss=torch.sqrt(torch.mean(error[loss_mask]))
         return loss
 

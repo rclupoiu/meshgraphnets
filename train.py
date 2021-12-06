@@ -25,6 +25,7 @@ import random
 
 
 import mesh_model
+import stats
 
 
 
@@ -83,10 +84,14 @@ import torch_geometric.nn as pyg_nn
 import matplotlib.pyplot as plt
 
 
-def train(dataset, device, args):
+def train(dataset, device, stats_list, args):
 
     loader = DataLoader(dataset[:args.train_size], batch_size=args.batch_size, shuffle=False)
     test_loader = DataLoader(dataset[args.train_size:], batch_size=args.batch_size, shuffle=False)
+
+    [mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge,mean_vec_y,std_vec_y] = stats_list
+    (mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge,mean_vec_y,std_vec_y)=(mean_vec_x.to(device),
+        std_vec_x.to(device),mean_vec_edge.to(device),std_vec_edge.to(device),mean_vec_y.to(device),std_vec_y.to(device))
 
     # build model
     num_node_features = dataset[0].x.shape[1]
@@ -107,22 +112,23 @@ def train(dataset, device, args):
         model.train()
         num_loops=0
         for batch in loader:
+            #Note that normalization must be done before it's called. The unnormalized
+            #data needs to be preserved in order to correctly calculate the loss
             batch=batch.to(device)
             opt.zero_grad()
-            pred = model(batch)
-            label = batch.y
+            pred = model(batch,mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge)
             #pred = pred[batch.train_mask]
             #label = label[batch.train_mask]
-            loss = model.loss(pred, batch)
+            loss = model.loss(pred,batch,mean_vec_y,std_vec_y)
             loss.backward()
             opt.step()
-            total_loss += loss.item() * batch.num_graphs
+            total_loss += loss.item()
             num_loops+=1
-        total_loss /= len(loader)
+        total_loss /= num_loops
         losses.append(total_loss)
 
         if epoch % 10 == 0:
-          test_acc = test(test_loader, model)
+          test_acc = test(test_loader, model,mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge,mean_vec_y,std_vec_y)
           test_accs.append(test_acc.item())
           if test_acc > best_acc:
             best_acc = test_acc
@@ -135,18 +141,18 @@ def train(dataset, device, args):
 
     return test_accs, losses, best_model, best_acc, test_loader
 
-def test(loader, test_model, is_validation=False, save_model_preds=False, model_type=None):
+def test(loader, test_model,mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge,mean_vec_y,std_vec_y, is_validation=False, save_model_preds=False, model_type=None):
 
     loss=0
     num_loops=0
     for data in loader:
         data=data.to(device)
         with torch.no_grad():
-            pred = test_model(data)
-            loss += test_model.loss(pred, data) * data.num_graphs
+            pred = test_model(data,mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge)
+            loss += test_model.loss(pred, data,mean_vec_y,std_vec_y)
         num_loops+=1
 
-    return loss/len(loader)
+    return loss/num_loops
 
 
 class objectview(object):
@@ -194,7 +200,11 @@ for args in [
     else:
         raise NotImplementedError("Unknown dataset")
 
-    test_accs, losses, best_model, best_acc, test_loader = train(dataset, device, args)
+    ## TODO: CHECK PERFORMANCE OF STAT CHANGES BY ITERATING THROUGH ALL DATASETS AND CHECKING
+    ##       THE MEAN AND VAR OF NORMALIZED DATA
+    stats_list = stats.get_stats(dataset)
+
+    test_accs, losses, best_model, best_acc, test_loader = train(dataset, device, stats_list, args)
 
     print("Min test set loss: {0}".format(min(test_accs)))
     print("Minimum loss: {0}".format(min(losses)))
