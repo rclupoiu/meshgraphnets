@@ -94,7 +94,7 @@ def train(dataset, device, stats_list, args):
 
     model_name='model_nl'+str(args.num_layers)+'_bs'+str(args.batch_size) + \
                '_hd'+str(args.hidden_dim)+'_ep'+str(args.epochs)+'_wd'+str(args.weight_decay) + \
-               '_lr'+str(args.lr)+'_shuff_False'
+               '_lr'+str(args.lr)+'_shuff_'+str(args.shuffle)+'_tr'+str(args.train_size)+'_te'+str(args.test_size)
 
     loader = DataLoader(dataset[:args.train_size], batch_size=args.batch_size, shuffle=False)
     test_loader = DataLoader(dataset[args.train_size:], batch_size=args.batch_size, shuffle=False)
