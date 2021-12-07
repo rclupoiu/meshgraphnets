@@ -21,6 +21,8 @@ from torch_sparse import SparseTensor, set_diag
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.utils import remove_self_loops, add_self_loops, softmax, degree
 
+import  argparse
+
 import random
 
 import pandas as pd
@@ -136,7 +138,7 @@ def train(dataset, device, stats_list, args):
         losses.append(total_loss)
 
         if epoch % 10 == 0:
-            test_loss = test(test_loader, model,mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge,mean_vec_y,std_vec_y)
+            test_loss = test(test_loader,device,model,mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge,mean_vec_y,std_vec_y)
             test_losses.append(test_loss.item())
 
             PATH = os.path.join(args.checkpoint_dir, model_name+'.csv')
@@ -164,7 +166,7 @@ def train(dataset, device, stats_list, args):
 
     return test_losses, losses, best_model, best_test_loss, test_loader
 
-def test(loader, test_model,mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge,mean_vec_y,std_vec_y, is_validation=False, save_model_preds=False, model_type=None):
+def test(loader,device,test_model,mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge,mean_vec_y,std_vec_y, is_validation=False, save_model_preds=False, model_type=None):
 
     loss=0
     num_loops=0
@@ -188,29 +190,27 @@ class objectview(object):
 
 
 
+def main(args):
 
-
-# Get the right path of dataset
-DATA_FOLDER_NAME = 'torch_dataset'
-root_dir = os.getcwd()
-dataset_dir = os.path.join(root_dir, '01_dataset/cylinder_flow', DATA_FOLDER_NAME)
-
-
-
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    # Get the right path of dataset
+    DATA_FOLDER_NAME = 'torch_dataset'
+    root_dir = os.getcwd()
+    dataset_dir = os.path.join(root_dir, '01_dataset/cylinder_flow', DATA_FOLDER_NAME)
 
 
 
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-for args in [
-    {'model_type': 'meshgraphnet', 'dataset': 'mini10', 'num_layers': 10,
-      'batch_size': 16, 'hidden_dim': 10, 'epochs': 5000,
-      'opt': 'adam', 'opt_scheduler': 'none', 'opt_restart': 0, 'weight_decay': 5e-4, 'lr': 0.001,
-      'train_size': 45, 'test_size': 5, 'shuffle': True, 'save_best_model': False, 'checkpoint_dir': './best_models/'},
-]:
-    args = objectview(args)
 
-    args.model_type = 'meshgraphnet'
+
+
+    '''for args in [
+        {'model_type': 'meshgraphnet', 'dataset': 'mini10', 'num_layers': 10,
+          'batch_size': 16, 'hidden_dim': 10, 'epochs': 5000,
+          'opt': 'adam', 'opt_scheduler': 'none', 'opt_restart': 0, 'weight_decay': 5e-4, 'lr': 0.001,
+          'train_size': 45, 'test_size': 5, 'shuffle': True, 'save_best_model': False, 'checkpoint_dir': './best_models/'},
+    ]:
+        args = objectview(args)'''
 
     if args.dataset == 'mini10':
         file_path = os.path.join(dataset_dir, 'meshgraphnets_miniset5traj_vis.pt')
@@ -242,3 +242,30 @@ for args in [
 
     plt.legend()
     plt.show()
+
+
+
+
+
+
+if __name__ == '__main__':
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('--model_type', type=str, help='', default='meshgraphnet')
+    argparser.add_argument('--dataset', type=str, help='', default='mini10')
+    argparser.add_argument('--num_layers', type=int, help='', default=10)
+    argparser.add_argument('--batch_size', type=int, help='', default=16)
+    argparser.add_argument('--hidden_dim', type=int, help='', default=10)
+    argparser.add_argument('--epochs', type=int, help='', default=5000)
+    argparser.add_argument('--opt', type=str, help='', default='adam')
+    argparser.add_argument('--opt_scheduler', type=str, help='', default='none')
+    argparser.add_argument('--opt_restart', type=int, help='', default=0)
+    argparser.add_argument('--weight_decay', type=float, help='', default=5e-4)
+    argparser.add_argument('--lr', type=float, help='', default=0.001)
+    argparser.add_argument('--train_size', type=int, help='', default=45)
+    argparser.add_argument('--test_size', type=int, help='', default=5)
+    argparser.add_argument('--shuffle', type=bool, help='', default=True)
+    argparser.add_argument('--save_best_model', type=bool, help='', default=False)
+    argparser.add_argument('--checkpoint_dir', type=str, help='', default='./best_models/')
+    args = argparser.parse_args()
+
+    main(args)
