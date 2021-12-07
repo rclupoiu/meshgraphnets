@@ -204,9 +204,9 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 for args in [
     {'model_type': 'meshgraphnet', 'dataset': 'mini10', 'num_layers': 10,
-      'batch_size': 16, 'hidden_dim': 10, 'epochs': 200,
+      'batch_size': 16, 'hidden_dim': 10, 'epochs': 5000,
       'opt': 'adam', 'opt_scheduler': 'none', 'opt_restart': 0, 'weight_decay': 5e-4, 'lr': 0.001,
-      'train_size': 45, 'shuffle': False, 'save_best_model': False, 'checkpoint_dir': './best_models/'},
+      'train_size': 45, 'test_size': 5, 'shuffle': True, 'save_best_model': False, 'checkpoint_dir': './best_models/'},
 ]:
     args = objectview(args)
 
@@ -215,7 +215,7 @@ for args in [
     if args.dataset == 'mini10':
         file_path = os.path.join(dataset_dir, 'meshgraphnets_miniset5traj_vis.pt')
         #stats_path = os.path.join(dataset_dir, 'meshgraphnets_miniset5traj_ms.pt')
-        dataset = torch.load(file_path)[:50] #, batch_size = args['batch_size'])
+        dataset = torch.load(file_path)[:(args.train_size+args.test_size)] #, batch_size = args['batch_size'])
         if(args.shuffle):
             random.shuffle(dataset)
         #dataset_stats=torch.load(stats_path)
