@@ -203,10 +203,10 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 for args in [
-    {'model_type': 'meshgraphnet', 'dataset': 'mini10', 'num_layers': 1,
-      'batch_size': 16, 'hidden_dim': 4, 'epochs': 200,
+    {'model_type': 'meshgraphnet', 'dataset': 'mini10', 'num_layers': 10,
+      'batch_size': 16, 'hidden_dim': 10, 'epochs': 200,
       'opt': 'adam', 'opt_scheduler': 'none', 'opt_restart': 0, 'weight_decay': 5e-4, 'lr': 0.001,
-      'train_size': 2, 'shuffle': False, 'save_best_model': False, 'checkpoint_dir': './best_models/'},
+      'train_size': 45, 'shuffle': False, 'save_best_model': False, 'checkpoint_dir': './best_models/'},
 ]:
     args = objectview(args)
 
