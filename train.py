@@ -23,6 +23,8 @@ from torch_geometric.utils import remove_self_loops, add_self_loops, softmax, de
 
 import random
 
+import pandas as pd
+
 
 import mesh_model
 import stats
@@ -86,6 +88,12 @@ import matplotlib.pyplot as plt
 
 def train(dataset, device, stats_list, args):
 
+    df = pd.DataFrame(columns=['epoch','train_loss','test_loss'])
+
+    model_name='model_nl'+str(args.num_layers)+'_bs'+str(args.batch_size) + \
+               '_hd'+str(args.hidden_dim)+'_ep'+str(args.epochs)+'_wd'+str(args.weight_decay) + \
+               '_lr'+str(args.lr)+'_shuff_False'
+
     loader = DataLoader(dataset[:args.train_size], batch_size=args.batch_size, shuffle=False)
     test_loader = DataLoader(dataset[args.train_size:], batch_size=args.batch_size, shuffle=False)
 
@@ -104,8 +112,8 @@ def train(dataset, device, stats_list, args):
 
     # train
     losses = []
-    test_accs = []
-    best_acc = np.inf
+    test_losses = []
+    best_test_loss = np.inf
     best_model = None
     for epoch in trange(args.epochs, desc="Training", unit="Epochs"):
         total_loss = 0
@@ -128,30 +136,33 @@ def train(dataset, device, stats_list, args):
         losses.append(total_loss)
 
         if epoch % 10 == 0:
-          test_acc = test(test_loader, model,mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge,mean_vec_y,std_vec_y)
-          test_accs.append(test_acc.item())
-          if test_acc < best_acc:
-            best_acc = test_acc
-            best_model = copy.deepcopy(model)
+            test_loss = test(test_loader, model,mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge,mean_vec_y,std_vec_y)
+            test_losses.append(test_loss.item())
+
+            PATH = os.path.join(args.checkpoint_dir, model_name+'.csv')
+            df.to_csv(PATH,index=False)
+
+            if test_loss < best_test_loss:
+                best_test_loss = test_loss
+                best_model = copy.deepcopy(model)
 
         else:
-          test_accs.append(test_accs[-1])
+            test_losses.append(test_losses[-1])
+
+        df = df.append({'epoch': epoch,'train_loss': losses[-1],'test_loss':test_losses[-1]},ignore_index=True)
 
         if(epoch%100==0):
-            print("train loss", str(round(total_loss,2)), "test loss", str(round(test_acc.item(),2)))
+            print("train loss", str(round(total_loss,2)), "test loss", str(round(test_loss.item(),2)))
 
             if(args.save_best_model):
                 # saving model
                 if not os.path.isdir( args.checkpoint_dir ):
                     os.mkdir(args.checkpoint_dir)
 
-                model_name='model_nl'+str(args.num_layers)+'_bs'+str(args.batch_size) + \
-                           '_hd'+str(args.batch_size)+'_ep'+str(args.epochs)+'_wd'+str(args.weight_decay) + \
-                           '_lr'+str(args.lr)+'.pt'
-                PATH = os.path.join(args.checkpoint_dir, model_name)
+                PATH = os.path.join(args.checkpoint_dir, model_name+'.pt')
                 torch.save(best_model.state_dict(), PATH )
 
-    return test_accs, losses, best_model, best_acc, test_loader
+    return test_losses, losses, best_model, best_test_loss, test_loader
 
 def test(loader, test_model,mean_vec_x,std_vec_x,mean_vec_edge,std_vec_edge,mean_vec_y,std_vec_y, is_validation=False, save_model_preds=False, model_type=None):
 
@@ -192,19 +203,19 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 for args in [
-    {'model_type': 'meshgraphnet', 'dataset': 'mini10', 'num_layers': 10,
-      'batch_size': 16, 'hidden_dim': 10, 'epochs': 5,
+    {'model_type': 'meshgraphnet', 'dataset': 'mini10', 'num_layers': 1,
+      'batch_size': 16, 'hidden_dim': 4, 'epochs': 200,
       'opt': 'adam', 'opt_scheduler': 'none', 'opt_restart': 0, 'weight_decay': 5e-4, 'lr': 0.001,
-      'train_size': 1, 'shuffle': False, 'save_best_model': True, 'checkpoint_dir': './best_models/'},
+      'train_size': 2, 'shuffle': False, 'save_best_model': False, 'checkpoint_dir': './best_models/'},
 ]:
     args = objectview(args)
 
     args.model_type = 'meshgraphnet'
 
     if args.dataset == 'mini10':
-        file_path = os.path.join(dataset_dir, 'meshgraphnets_minisetdifftraj.pt')
+        file_path = os.path.join(dataset_dir, 'meshgraphnets_miniset5traj_vis.pt')
         #stats_path = os.path.join(dataset_dir, 'meshgraphnets_miniset5traj_ms.pt')
-        dataset = torch.load(file_path)[:55] #, batch_size = args['batch_size'])
+        dataset = torch.load(file_path)[:50] #, batch_size = args['batch_size'])
         if(args.shuffle):
             random.shuffle(dataset)
         #dataset_stats=torch.load(stats_path)
@@ -216,9 +227,9 @@ for args in [
     ##       THE MEAN AND VAR OF NORMALIZED DATA
     stats_list = stats.get_stats(dataset)
 
-    test_accs, losses, best_model, best_acc, test_loader = train(dataset, device, stats_list, args)
+    test_losses, losses, best_model, best_test_loss, test_loader = train(dataset, device, stats_list, args)
 
-    print("Min test set loss: {0}".format(min(test_accs)))
+    print("Min test set loss: {0}".format(min(test_losses)))
     print("Minimum loss: {0}".format(min(losses)))
 
     # Run test for our best model to save the predictions!
@@ -227,7 +238,7 @@ for args in [
 
     plt.title(args.dataset)
     plt.plot(losses, label="training loss" + " - " + args.model_type)
-    plt.plot(test_accs, label="test loss" + " - " + args.model_type)
+    plt.plot(test_losses, label="test loss" + " - " + args.model_type)
 
     plt.legend()
     plt.show()
