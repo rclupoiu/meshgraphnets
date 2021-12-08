@@ -3,23 +3,22 @@ print(torch.__version__)
 
 import os
 
-import torch_geometric
+#import torch_geometric
 
-import torch
-import torch_scatter
-import torch.nn as nn
-import torch.nn.functional as F
+#import torch_scatter
+#import torch.nn as nn
+#import torch.nn.functional as F
 
-import torch_geometric.nn as pyg_nn
-import torch_geometric.utils as pyg_utils
+#import torch_geometric.nn as pyg_nn
+#import torch_geometric.utils as pyg_utils
 
-from torch import Tensor
-from typing import Union, Tuple, Optional
+#from torch import Tensor
+#from typing import Union, Tuple, Optional
 
-from torch.nn import Parameter, Linear, Sequential, LayerNorm, ReLU
-from torch_sparse import SparseTensor, set_diag
-from torch_geometric.nn.conv import MessagePassing
-from torch_geometric.utils import remove_self_loops, add_self_loops, softmax, degree
+#from torch.nn import Parameter, Linear, Sequential, LayerNorm, ReLU
+#from torch_sparse import SparseTensor, set_diag
+#from torch_geometric.nn.conv import MessagePassing
+#from torch_geometric.utils import remove_self_loops, add_self_loops, softmax, degree
 
 import  argparse
 
@@ -71,19 +70,19 @@ def build_optimizer(args, params):
 
 import time
 
-import networkx as nx
+#import networkx as nx
 import numpy as np
-import torch
+#import torch
 import torch.optim as optim
 from tqdm import trange
 import pandas as pd
 import copy
 
-from torch_geometric.datasets import TUDataset
-from torch_geometric.datasets import Planetoid
+#from torch_geometric.datasets import TUDataset
+#from torch_geometric.datasets import Planetoid
 from torch_geometric.data import DataLoader
 
-import torch_geometric.nn as pyg_nn
+#import torch_geometric.nn as pyg_nn
 
 import matplotlib.pyplot as plt
 
@@ -163,6 +162,7 @@ def train(dataset, device, stats_list, args):
 
         else:
             test_losses.append(test_losses[-1])
+            velo_val_losses.append(velo_val_losses[-1])
 
         if (args.save_velo_val):
             df = df.append({'epoch': epoch,'train_loss': losses[-1],
@@ -247,7 +247,7 @@ class objectview(object):
 def main(args):
 
     # Get the right path of dataset
-    DATA_FOLDER_NAME = '01_dataset'
+    DATA_FOLDER_NAME = '01_dataset\\cylinder_flow\\torch_dataset'
     root_dir = os.getcwd()
     dataset_dir = os.path.join(root_dir, DATA_FOLDER_NAME)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -285,7 +285,7 @@ def main(args):
     # Run test for our best model to save the predictions!
     #test(test_loader, best_model, is_validation=False, save_model_preds=True, model_type=model)
     #print()
-    #save_plots(args, losses, test_losses, velo_val_losses)
+    save_plots(args, losses, test_losses, velo_val_losses)
 
 
 
@@ -293,10 +293,10 @@ if __name__ == '__main__':
     argparser = argparse.ArgumentParser()
     argparser.add_argument('--model_type', type=str, help='', default='meshgraphnet')
     argparser.add_argument('--dataset', type=str, help='', default='mini10')
-    argparser.add_argument('--num_layers', type=int, help='', default=10)
+    argparser.add_argument('--num_layers', type=int, help='', default=2)
     argparser.add_argument('--batch_size', type=int, help='', default=16)
-    argparser.add_argument('--hidden_dim', type=int, help='', default=10)
-    argparser.add_argument('--epochs', type=int, help='', default=5000)
+    argparser.add_argument('--hidden_dim', type=int, help='', default=2)
+    argparser.add_argument('--epochs', type=int, help='', default=100)
     argparser.add_argument('--opt', type=str, help='', default='adam')
     argparser.add_argument('--opt_scheduler', type=str, help='', default='none')
     argparser.add_argument('--opt_restart', type=int, help='', default=0)

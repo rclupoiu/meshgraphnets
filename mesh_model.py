@@ -1,8 +1,8 @@
 import torch
 
-import torch_geometric
+#import torch_geometric
 
-import torch
+#import torch
 import torch_scatter
 import torch.nn as nn
 import torch.nn.functional as F
@@ -41,17 +41,27 @@ class MeshGraphNet(torch.nn.Module):
         # encoder convert raw inputs into latent embeddings
         self.node_encoder = Sequential(Linear(input_dim_node , hidden_dim),
                               ReLU(),
-                              Linear( hidden_dim, hidden_dim))
+                              Linear( hidden_dim, hidden_dim),
+                              ReLU(),
+                              Linear( hidden_dim, hidden_dim),
+                              LayerNorm(hidden_dim))
 
         self.edge_encoder = Sequential(Linear( input_dim_edge , hidden_dim),
                               ReLU(),
-                              Linear( hidden_dim, hidden_dim))
+                              Linear( hidden_dim, hidden_dim),
+                              ReLU(),
+                              Linear( hidden_dim, hidden_dim),
+                              LayerNorm(hidden_dim)
+                              )
 
 
         # decoder: only for node embeddings
         self.decoder = Sequential(Linear( hidden_dim , hidden_dim),
                               ReLU(),
-                              Linear( hidden_dim, output_dim))
+                              Linear( hidden_dim, output_dim),
+                              ReLU(),
+                              Linear( hidden_dim, hidden_dim)
+                              )
 
 
         self.processor = nn.ModuleList()
@@ -88,6 +98,7 @@ class MeshGraphNet(torch.nn.Module):
 
         # Step 1: encode node/edge features into latent node/edge embeddings
         x = self.node_encoder(x) # output shape 128
+
         edge_attr = self.edge_encoder(edge_attr) # output shape 128
         #print('edge_attr shape {}'.format(edge_attr.size()))
 
@@ -128,8 +139,12 @@ class EdgeProcessorLayer(MessagePassing):
         EdgeProcessorLayer takes the node embeddings of two nodes connected to the current edge,
         and the edge feature of itself
         """
-        self.mlp = Sequential(Linear( 3* in_channels , out_channels), ReLU(),
-                              Linear( out_channels, out_channels))
+        self.mlp = Sequential(Linear( 3* in_channels , out_channels),
+                              ReLU(),
+                              Linear( out_channels, out_channels),
+                              ReLU(),
+                              Linear( out_channels, out_channels),
+                              LayerNorm(out_channels))
 
         self.reset_parameters()
 
@@ -203,8 +218,12 @@ class NodeProcessorLayer(MessagePassing):
         NodeProcessorLayer aggregates embeddings from neighboring edges with sum
         aggregator with the self node embedding [self-implemented]
         """
-        self.mlp = Sequential(Linear( 2* in_channels , out_channels), ReLU(),
-                              Linear( out_channels, out_channels))
+        self.mlp = Sequential(Linear( 2* in_channels , out_channels),
+                              ReLU(),
+                              Linear( out_channels, out_channels),
+                              ReLU(),
+                              Linear( out_channels, out_channels),
+                              LayerNorm(out_channels))
 
         self.reset_parameters()
 
