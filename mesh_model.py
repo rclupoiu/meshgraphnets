@@ -118,16 +118,6 @@ class MeshGraphNet(torch.nn.Module):
 
 
 
-
-
-
-
-
-
-
-
-
-
 class EdgeProcessorLayer(MessagePassing):
 
     def __init__(self, in_channels, out_channels,  **kwargs):
