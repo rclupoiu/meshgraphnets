@@ -42,8 +42,8 @@ def GenerateArgLines(num_layer, hidden_dim, train_size, test_size):
 clusterName = 'pascal' # this can be changed later
 coreNum = 1             # 1GPU
 currentPath = os.getcwd()
-bank = 'cbronze'
-train_time = 2 # 2hr wall time
+bank = 'thermal'
+train_time = 3 # 2hr wall time
 
 num_layers_list =[ 10,12,15]
 hidden_dim_list = [ 10,20,30,50]
@@ -68,16 +68,20 @@ output_folder_name = ['main_out', 'train_out']
 for num_layer in num_layers_list:
     for hidden_dim in hidden_dim_list:
         for (train_size, test_size) in zip( train_size_list, test_size_list):
+            if (count > 30):
+                args_line = GenerateArgLines(num_layer, hidden_dim,
+                                             train_size, test_size)
+                
+                fileName = WriteMsub(count, bank, clusterName, 
+                                     coreNum, train_time, args_line, output_folder_name)
+                
+                msubLine = 'msub ' + fileName
+                call( msubLine, shell=True)
+                os.chdir(currentPath)
+                
+            else:
+                print('Already in training')
             
-            args_line = GenerateArgLines(num_layer, hidden_dim,
-                                         train_size, test_size)
-            
-            fileName = WriteMsub(count, bank, clusterName, 
-                                 coreNum, train_time, args_line, output_folder_name)
-            
-            msubLine = 'msub ' + fileName
-            call( msubLine, shell=True)
-            os.chdir(currentPath)
             count += 1
 # System call run msub file on cluster 
     
